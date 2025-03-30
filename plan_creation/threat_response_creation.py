@@ -3,371 +3,353 @@ import json
 import os
 import time
 import argparse
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv  # Import dotenv
 from typing import Dict, List, Any, ClassVar, Optional
-from langchain.prompts import PromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain.llms.base import LLM
 from langgraph.graph import StateGraph
 from langgraph.checkpoint.memory import MemorySaver
 
-# Define the initial state structure
-class AgentState(dict):
-    """State for the threat response agent"""
+
+# Load environment variables early to configure the API key
+load_dotenv()
+# Configure the Gemini API key
+try:
+    client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+except KeyError:
+    print("Error: GEMINI_API_KEY not found in environment variables.")
+    print("Please ensure it is set in your .env file or environment.")
+    exit(1) # Exit if the key is not found
+
+def gemini_client(client, input_text):
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=[input_text],
+        config=types.GenerateContentConfig(
+            system_instruction="You are a strategic emergency response system. You are to respond with concise, accurate, precise, and actionable responses. These responses will be used to generate a response plan.",
+            response_mime_type="text/plain"),
+    )
+    return response.text
+
+# State definition for the agentic framework
+class ThreatResponseState(Dict[str, Any]):
+    """State for the threat response agent."""
+    
+    # Define the expected keys in the state
     threat_data: Dict[str, Any]
-    analysis: Dict[str, Any] = None
-    response_plan: Dict[str, Any] = None
-    recommendations: Dict[str, Any] = None
-    status: str = "initialized"
+    threat_analysis: Optional[str] = None
+    response_plan: Optional[str] = None
+    resources_needed: Optional[List[str]] = None
+    final_response: Optional[str] = None
 
-# Create a simple mock LLM for testing
-class MockLLM(LLM):
-    """Mock LLM that returns placeholder responses for fast testing"""
+# Function to load threat data from JSON files
+def load_threat_data(threat_file_path: str) -> Dict[str, Any]:
+    """
+    Load threat data from a JSON file.
     
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    Args:
+        threat_file_path: Path to the JSON file containing threat data
+        
+    Returns:
+        Dictionary containing the threat data
+    """
+    try:
+        with open(threat_file_path, 'r') as f:
+            threat_data = json.load(f)
+        return threat_data
+    except Exception as e:
+        print(f"Error loading threat data: {e}")
+        return {}
+
+# Agent nodes for the LangGraph
+
+def analyze_threat(state: ThreatResponseState) -> ThreatResponseState:
+    """
+    Analyze the threat data and generate an initial analysis.
     
-    @property
-    def _llm_type(self) -> str:
-        return "mock-llm"
+    Args:
+        state: Current state containing threat data
+        
+    Returns:
+        Updated state with threat analysis
+    """
+    threat = state["threat_data"]
     
-    def _call(self, prompt: str, stop=None, **kwargs) -> str:
-        """Return a mock response based on the prompt type"""
-        time.sleep(1)  # Add a small delay to simulate processing
-        
-        if "threat analysis system" in prompt.lower():
-            return """
-            Based on the detection data, this appears to be a surveillance drone flying at medium altitude (150m) during dusk hours in clear weather. 
-            
-            Type of threat: Unauthorized drone surveillance
-            Intent: Likely intelligence gathering or area mapping
-            Danger level: Medium
-            Capabilities: Video/photo recording, possible radio signal interception
-            Limitations: Limited flight time, vulnerable to signal jamming
-            Strategic implications: Potential preparation for future operations or targeting of critical infrastructure
-            """
-        
-        elif "response planning system" in prompt.lower():
-            return """
-            IMMEDIATE ACTIONS:
-            1. Deploy counter-drone measures to track the device
-            2. Activate electronic countermeasures to jam signals if necessary
-            3. Alert nearby security units to maintain visual contact
-            
-            RESOURCES REQUIRED:
-            - Signal intelligence unit
-            - Counter-drone response team
-            - Radar tracking system
-            
-            COMMUNICATION PROTOCOLS:
-            - Maintain secure channel Alpha for all communications
-            - Hourly situational updates to command
-            - Alert civilian airspace control if drone moves toward populated areas
-            
-            CONTINGENCY MEASURES:
-            - Prepare forced landing protocols if threat escalates
-            - Ready physical interception units if drone approaches sensitive areas
-            
-            TIMELINE:
-            - Immediate tracking and monitoring
-            - Escalation decision within 15 minutes
-            - Resolution within 60 minutes
-            """
-        
-        elif "coordination system" in prompt.lower():
-            return """
-            NAVY COMMAND:
-            - Maintain alert status for naval assets in the area
-            - Prepare defensive countermeasures
-            - Update intelligence assessment based on drone flight pattern
-            
-            COAST GUARD:
-            - Patrol waterways surrounding the detection area
-            - Coordinate with local maritime traffic
-            - Ready response vessels for possible interception
-            
-            INTELLIGENCE SERVICES:
-            - Analyze drone technical specifications based on flight characteristics
-            - Cross-reference with known drone deployments in the region
-            - Investigate potential operators based on capabilities
-            
-            LOCAL LAW ENFORCEMENT:
-            - Secure perimeter of critical infrastructure in flight path
-            - Prepare for public safety measures if drone moves toward populated areas
-            - Coordinate with federal authorities on jurisdiction
-            """
-        
-        else:
-            return "Generated response for: " + prompt[:100] + "..."
-
-# Define the nodes of our agentic system
-def threat_analyzer(state: AgentState) -> AgentState:
-    """Analyze the detected threat and its implications"""
-    # Use the mock LLM for testing
-    llm = MockLLM()
+    # Format the threat data into a descriptive prompt
+    prompt = f"""
+    Analyze the following threat detection and provide a concise threat assessment:
     
-    # Define the threat analysis prompt
-    analysis_template = """
-    You are a naval defense threat analysis system. Analyze the following detection data
-    and provide a comprehensive threat assessment:
-
-    DETECTION DATA:
-    {threat_data}
-
-    Your task is to analyze this detection and assess:
-    1. Type of threat and potential intent
-    2. Level of danger (low, medium, high, critical)
-    3. Possible capabilities and limitations
-    4. Strategic implications
-
-    THREAT ANALYSIS:
+    Detected Object(s): {', '.join([obj['type'] for obj in threat['objects_detected']])}
+    Threat Level: {threat['threat_level']}
+    Location: Latitude {threat['coordinates']['latitude']}, Longitude {threat['coordinates']['longitude']}, Altitude {threat['coordinates']['altitude']}
+    Conditions: {threat['environment_conditions']['time_of_day']} - {threat['environment_conditions']['weather']}
+    Raw Description: {threat['raw_description']}
+    
+    Provide a threat analysis including potential intent, capabilities, and immediate concerns.
     """
     
-    analysis_prompt = PromptTemplate(
-        input_variables=["threat_data"],
-        template=analysis_template
-    )
+    # Get response from Gemini
+    analysis = gemini_client(client, prompt)
     
-    # Create and run the analysis chain using modern LangChain patterns
-    chain = analysis_prompt | llm | StrOutputParser()
-    
-    # Use the new invoke method instead of run
-    analysis_result = chain.invoke({
-        "threat_data": json.dumps(state["threat_data"], indent=2)
-    })
-    
-    # Update the state with the analysis
-    state["analysis"] = {
-        "assessment": analysis_result,
-        "timestamp": time.time()
-    }
-    state["status"] = "analyzed"
-    
-    print("Analysis complete")
+    # Update state
+    state["threat_analysis"] = analysis
     return state
 
-def response_planner(state: AgentState) -> AgentState:
-    """Generate response plans based on the threat analysis"""
-    llm = MockLLM()
+def generate_response_plan(state: ThreatResponseState) -> ThreatResponseState:
+    """
+    Generate a response plan based on the threat analysis.
     
-    # Define the response planning prompt
-    response_template = """
-    You are a naval defense response planning system. Based on the following threat analysis,
-    generate a comprehensive response plan:
-
-    THREAT DATA:
-    {threat_data}
-
+    Args:
+        state: Current state containing threat data and analysis
+        
+    Returns:
+        Updated state with response plan
+    """
+    threat = state["threat_data"]
+    analysis = state["threat_analysis"]
+    
+    prompt = f"""
+    Based on the following threat information and analysis, create a detailed response plan:
+    
+    THREAT INFORMATION:
+    Detected Object(s): {', '.join([obj['type'] for obj in threat['objects_detected']])}
+    Threat Level: {threat['threat_level']}
+    Location: Latitude {threat['coordinates']['latitude']}, Longitude {threat['coordinates']['longitude']}, Altitude {threat['coordinates']['altitude']}
+    Conditions: {threat['environment_conditions']['time_of_day']} - {threat['environment_conditions']['weather']}
+    
     THREAT ANALYSIS:
     {analysis}
-
-    Your task is to create a detailed response plan that includes:
-    1. Immediate actions to address the threat
-    2. Required resources and personnel
-    3. Communication protocols
-    4. Contingency measures
-    5. Timeline for response
-
-    RESPONSE PLAN:
+    
+    Provide a step-by-step response plan including immediate actions, personnel required, and containment strategies.
     """
     
-    response_prompt = PromptTemplate(
-        input_variables=["threat_data", "analysis"],
-        template=response_template
-    )
+    # Get response from Gemini
+    response_plan = gemini_client(client, prompt)
     
-    # Create and run the response chain using modern LangChain patterns
-    chain = response_prompt | llm | StrOutputParser()
-    
-    # Use the new invoke method instead of run
-    response_result = chain.invoke({
-        "threat_data": json.dumps(state["threat_data"], indent=2),
-        "analysis": state["analysis"]["assessment"]
-    })
-    
-    # Update the state with the response plan
-    state["response_plan"] = {
-        "plan": response_result,
-        "timestamp": time.time()
-    }
-    state["status"] = "planned"
-    
-    print("Response plan complete")
+    # Update state
+    state["response_plan"] = response_plan
     return state
 
-def agency_recommendations(state: AgentState) -> AgentState:
-    """Generate agency-specific recommendations"""
-    llm = MockLLM()
+def identify_resources(state: ThreatResponseState) -> ThreatResponseState:
+    """
+    Identify the resources needed for the response plan.
     
-    # Define the agency recommendations prompt
-    recommendations_template = """
-    You are a naval defense coordination system. Based on the following threat analysis and response plan,
-    provide specific recommendations for different agencies:
-
-    THREAT DATA:
-    {threat_data}
-
-    THREAT ANALYSIS:
-    {analysis}
-
+    Args:
+        state: Current state containing threat data, analysis, and response plan
+        
+    Returns:
+        Updated state with resources needed
+    """
+    response_plan = state["response_plan"]
+    
+    prompt = f"""
+    Based on the following response plan, identify and list all resources needed:
+    
     RESPONSE PLAN:
     {response_plan}
-
-    Your task is to provide specific recommendations for the correct agency from the following agencies:
-    1. Navy Command
-    2. Coast Guard
-    3. Local Law Enforcement
-    4. Intelligence Services
-    5. Civilian Authorities
-
-    Format your response as specific actionable items for each agency. Limit the amount of agencies called. 
-
-    AGENCY RECOMMENDATIONS:
+    
+    List all personnel, equipment, vehicles, and other resources needed to execute this plan.
+    Format as a numbered list.
     """
     
-    recommendations_prompt = PromptTemplate(
-        input_variables=["threat_data", "analysis", "response_plan"],
-        template=recommendations_template
-    )
+    # Get response from Gemini
+    resources = gemini_client(client, prompt)
     
-    # Create and run the recommendations chain using modern LangChain patterns
-    chain = recommendations_prompt | llm | StrOutputParser()
-    
-    # Use the new invoke method instead of run
-    recommendations_result = chain.invoke({
-        "threat_data": json.dumps(state["threat_data"], indent=2),
-        "analysis": state["analysis"]["assessment"],
-        "response_plan": state["response_plan"]["plan"]
-    })
-    
-    # Parse recommendations for each agency
-    recommendations = {
-        "content": recommendations_result,
-        "timestamp": time.time()
-    }
-    
-    # Update the state with the recommendations
-    state["recommendations"] = recommendations
-    state["status"] = "complete"
-    
-    print("Agency recommendations complete")
+    # Update state with resources as a list (assuming the model returns a numbered list)
+    # We'll process the raw text into a list
+    resources_list = [line.strip() for line in resources.split('\n') if line.strip()]
+    state["resources_needed"] = resources_list
     return state
 
-# Define the agentic workflow
-def build_agent_workflow():
-    """Build and return the agent workflow graph"""
-    workflow = StateGraph(AgentState)
+def finalize_response(state: ThreatResponseState) -> ThreatResponseState:
+    """
+    Generate the final response combining all previous steps.
+    
+    Args:
+        state: Current state containing all previous outputs
+        
+    Returns:
+        Updated state with final response
+    """
+    threat = state["threat_data"]
+    analysis = state["threat_analysis"]
+    response_plan = state["response_plan"]
+    resources = state["resources_needed"]
+    
+    prompt = f"""
+    Create a comprehensive threat response document with the following sections:
+    
+    THREAT INFORMATION:
+    Detected Object(s): {', '.join([obj['type'] for obj in threat['objects_detected']])}
+    Threat Level: {threat['threat_level']}
+    Location: Latitude {threat['coordinates']['latitude']}, Longitude {threat['coordinates']['longitude']}, Altitude {threat['coordinates']['altitude']}
+    Conditions: {threat['environment_conditions']['time_of_day']} - {threat['environment_conditions']['weather']}
+    Raw Description: {threat['raw_description']}
+    
+    THREAT ANALYSIS:
+    {analysis}
+    
+    RESPONSE PLAN:
+    {response_plan}
+    
+    RESOURCES REQUIRED:
+    {chr(10).join(resources)}
+    
+    Format this as a complete, professional security response document with clear section headings.
+    """
+    
+    # Get response from Gemini
+    final_response = gemini_client(client, prompt)
+    
+    # Update state
+    state["final_response"] = final_response
+    return state
+
+# Create the agent workflow using LangGraph
+def create_threat_response_agent():
+    """
+    Create and return the threat response agent workflow.
+    
+    Returns:
+        A callable graph that can be executed with threat data
+    """
+    # Define the workflow
+    workflow = StateGraph(ThreatResponseState)
     
     # Add nodes
-    workflow.add_node("threat_analyzer", threat_analyzer)
-    workflow.add_node("response_planner", response_planner) 
-    workflow.add_node("agency_recommendations", agency_recommendations)
+    workflow.add_node("analyze_threat", analyze_threat)
+    workflow.add_node("generate_response_plan", generate_response_plan)
+    workflow.add_node("identify_resources", identify_resources)
+    workflow.add_node("finalize_response", finalize_response)
     
-    # Define edges
-    workflow.add_edge("threat_analyzer", "response_planner")
-    workflow.add_edge("response_planner", "agency_recommendations")
+    # Define edges (the flow)
+    workflow.add_edge("analyze_threat", "generate_response_plan")
+    workflow.add_edge("generate_response_plan", "identify_resources")
+    workflow.add_edge("identify_resources", "finalize_response")
     
-    # Set entry point
-    workflow.set_entry_point("threat_analyzer")
+    # Set the entry point
+    workflow.set_entry_point("analyze_threat")
     
     # Compile the workflow
     return workflow.compile()
 
-# Function to process a new threat detection
-def process_threat_detection(detection_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Process a detection and run it through the agent workflow"""
-    # Initialize the workflow
-    workflow = build_agent_workflow()
+def process_threat_file(threat_file_path, output_dir=None):
+    """
+    Process a single threat file and generate a response.
     
-    # Create initial state
-    initial_state = AgentState(
-        threat_data=detection_data,
-        status="initialized"
-    )
-    
-    # Run the workflow
-    final_state = workflow.invoke(initial_state)
-    
-    # Extract threat level from analysis
-    analysis_text = final_state["analysis"]["assessment"].lower()
-    if "critical" in analysis_text:
-        threat_level = "severe"
-    elif "high" in analysis_text:
-        threat_level = "high"
-    elif "medium" in analysis_text:
-        threat_level = "medium"
-    else:
-        threat_level = "low"
-    
-    # Format the response in a clean JSON structure
-    response = {
-        "threat_level": threat_level,
-        "detection": {
-            "type": detection_data.get("type", "Unknown"),
-            "timestamp": detection_data.get("timestamp", time.time()),
-            "location": detection_data.get("location", {})
-        },
-        "analysis": {
-            "description": final_state["analysis"]["assessment"].strip(),
-            "timestamp": final_state["analysis"]["timestamp"]
-        },
-        "response_plan": {
-            "steps": [step.strip() for step in final_state["response_plan"]["plan"].split("\n") if step.strip() and not step.strip().startswith("IMMEDIATE") and not step.strip().startswith("RESOURCES") and not step.strip().startswith("COMMUNICATION") and not step.strip().startswith("CONTINGENCY") and not step.strip().startswith("TIMELINE")],
-            "timestamp": final_state["response_plan"]["timestamp"]
-        },
-        "agencies": {
-            agency.strip(":\n "): [
-                action.strip("- \n") 
-                for action in section.split("-")[1:] 
-                if action.strip()
-            ]
-            for agency, section in [
-                part.split(":", 1) 
-                for part in final_state["recommendations"]["content"].split("\n\n") 
-                if ":" in part
-            ]
-        }
-    }
-    
-    print(f"\nThreat Response Summary:")
-    print(json.dumps(response, indent=2))
-    return response
-
-# Function to poll the detection service
-def poll_detection_service(mock_mode: bool) -> List[Dict[str, Any]]:
-    """Poll the detection service or load mock data."""
-    if mock_mode:
-        print("Running in mock mode. Loading data from mock_detections.json")
-        try:
-            with open("plan_creation/mock_detections.json", "r") as f:
-                detections = json.load(f)
-        except FileNotFoundError:
-            print("Error: mock_detections.json not found")
-            return []
+    Args:
+        threat_file_path: Path to the JSON file containing threat data
+        output_dir: Directory to save the output (defaults to None)
         
-        responses = []
-        for detection in detections:
-            print(f"Processing detection: {detection.get('type', 'Unknown')}")
-            response = process_threat_detection(detection)
+    Returns:
+        The final response
+    """
+    # Load the threat data
+    threat_data = load_threat_data(threat_file_path)
+    
+    # Create the agent
+    agent = create_threat_response_agent()
+    
+    # For a list of threat detections, process each one individually
+    responses = []
+    
+    # Process each threat
+    if isinstance(threat_data, list):
+        for i, threat in enumerate(threat_data):
+            print(f"Processing threat {i+1}/{len(threat_data)}...")
+            
+            # Initialize the agent state
+            state = {"threat_data": threat}
+            
+            # Run the agent
+            final_state = agent.invoke(state)
+            
+            # Get the final response
+            response = final_state["final_response"]
             responses.append(response)
             
-        return responses
+            # Save the response to a file if output_dir is specified
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+                output_file = os.path.join(output_dir, f"response_{i+1}.txt")
+                with open(output_file, 'w') as f:
+                    f.write(response)
+                print(f"Response saved to {output_file}")
     else:
-        # TODO: Implement real detection service polling
-        pass
-
-if __name__ == "__main__":
-    load_dotenv()  # Load environment variables from .env file
+        # If threat_data is a single threat (not a list)
+        print("Processing single threat...")
+        
+        # Initialize the agent state
+        state = {"threat_data": threat_data}
+        
+        # Run the agent
+        final_state = agent.invoke(state)
+        
+        # Get the final response
+        response = final_state["final_response"]
+        responses.append(response)
+        
+        # Save the response to a file if output_dir is specified
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+            output_file = os.path.join(output_dir, "response.txt")
+            with open(output_file, 'w') as f:
+                f.write(response)
+            print(f"Response saved to {output_file}")
     
-    parser = argparse.ArgumentParser(description='Run the threat response agent')
-    parser.add_argument('--mock', action='store_true', help='Run with mock data')
+    return responses
+
+def process_all_threats(threats_dir, output_dir=None):
+    """
+    Process all JSON files in the threats directory.
+    
+    Args:
+        threats_dir: Directory containing the threat JSON files
+        output_dir: Directory to save the outputs (defaults to None)
+    """
+    # Get a list of all JSON files in the threats directory
+    json_files = [os.path.join(threats_dir, f) for f in os.listdir(threats_dir) if f.endswith('.json')]
+    
+    print(f"Found {len(json_files)} threat files in {threats_dir}")
+    
+    # Process each file
+    for json_file in json_files:
+        print(f"\nProcessing {os.path.basename(json_file)}...")
+        file_output_dir = os.path.join(output_dir, os.path.basename(json_file).split('.')[0]) if output_dir else None
+        process_threat_file(json_file, file_output_dir)
+
+def main():
+    """
+    Main function to run the threat response agent.
+    """
+    parser = argparse.ArgumentParser(description="Threat Response Agent")
+    parser.add_argument("--threats-dir", default="plan_creation/threats", help="Directory containing threat JSON files")
+    parser.add_argument("--output-dir", default="plan_creation/responses", help="Directory to save response outputs")
+    parser.add_argument("--file", help="Process a specific threat file instead of the entire directory")
+    
     args = parser.parse_args()
     
-    print("Starting Threat Response Agent...")
-    print("Polling for new detections...")
+    # Set the base directory to the project root
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
-    # Poll for detections
-    responses = poll_detection_service(args.mock)
+    # Resolve paths
+    threats_dir = os.path.join(base_dir, args.threats_dir)
+    output_dir = os.path.join(base_dir, args.output_dir) if args.output_dir else None
     
-    if not responses:
-        print("No detections found.")
+    # Check if the threats directory exists
+    if not os.path.exists(threats_dir):
+        print(f"Error: Threats directory {threats_dir} does not exist")
+        exit(1)
+    
+    # Process a specific file or all files
+    if args.file:
+        file_path = os.path.join(threats_dir, args.file) if not os.path.isabs(args.file) else args.file
+        if not os.path.exists(file_path):
+            print(f"Error: File {file_path} does not exist")
+            exit(1)
+        process_threat_file(file_path, output_dir)
+    else:
+        process_all_threats(threats_dir, output_dir)
+
+if __name__ == "__main__":
+    main()
