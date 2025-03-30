@@ -1,0 +1,125 @@
+## EMERGENCY RESPONSE DOCUMENT: MARITIME INTRUSION - HIGH THREAT
+
+**Date/Time:** 2024-02-29 16:23:00 UTC (Example - Update with Actual Time)
+**Originator:** Emergency Response System
+
+### I. THREAT ASSESSMENT
+
+*   **Detected Object(s):** Boat, Person
+*   **Threat Level:** High
+*   **Location:** Latitude 34.05, Longitude -118.24, Altitude 5.0
+*   **Conditions:** Night - Foggy
+*   **Raw Description:** Suspicious boat with person detected moving slowly towards restricted zone during foggy night conditions.
+*   **Potential Intent:** Infiltration, smuggling, reconnaissance, or hostile action against restricted zone.
+*   **Capabilities:** Maritime mobility, potential for carrying weapons/contraband, exploitation of low visibility.
+*   **Immediate Concerns:** Unauthorized entry into restricted zone, potential for escalation, obscured visibility hindering positive identification and response.
+
+### II. RESPONSE OBJECTIVE
+
+Secure restricted zone, identify and neutralize threat, and ensure the safety of personnel and assets.
+
+### III. RESPONSE PLAN: PHASES & ACTIONS
+
+**A. IMMEDIATE ACTIONS (0-5 minutes)**
+
+1.  **Alert:** Notify Coast Guard (primary), local law enforcement, and on-site security personnel. Relay: "High Threat - Maritime Intrusion. Boat with person approaching restricted zone. Location: 34.05, -118.24, Altitude 5.0. Conditions: Night, Foggy."
+2.  **Assess:** Activate radar and thermal imaging to enhance visibility and confirm target identification, heading, and speed.
+3.  **Deploy:** Dispatch Maritime Patrol Unit and establish a Land-Based Observation Post. Maintain radio silence unless critical.
+4.  **Establish Exclusion Zone:** Implement perimeter. Broadcast warning via loudspeaker, VHF radio, and searchlight: "You are approaching a restricted zone. Halt immediately and prepare for boarding."
+
+**B. CONTAINMENT & ESCALATION (5-15 minutes)**
+
+1.  **Intercept:** Maritime Patrol Unit approaches cautiously, maintaining a safe distance.
+2.  **Verification:** Attempt communication to verify intentions. Request identification and reason for proximity to the restricted area.
+3.  **Escalation Protocol:**
+    *   **Non-Compliant/Hostile:**
+        *   Warning Shots (If authorized and safe): Across the bow.
+        *   Disabling Fire (If necessary): Aimed at engine to immobilize.
+        *   Use of Force (Last Resort): To neutralize the threat, adhering to Rules of Engagement.
+    *   **Compliant:** Proceed with boarding and inspection.
+4.  **Secure Vessel:** Conduct a thorough search for weapons, contraband, and personnel.
+
+**C. POST-CONTAINMENT (15+ minutes)**
+
+1.  **Detain/Apprehend:** Detain all individuals on board and secure the boat.
+2.  **Investigation:** Determine intent and background.
+3.  **Evidence Collection:** Preserve all evidence.
+4.  **Reporting:** Prepare a detailed report of the incident. Submit to relevant authorities.
+5.  **Debriefing:** Conduct a debriefing with all personnel.
+
+**D. ONGOING MONITORING**
+
+1.  **Increased Surveillance:** Maintain heightened surveillance.
+2.  **Review Procedures:** Re-evaluate security protocols.
+
+### IV. RESOURCE ALLOCATION
+
+**A. PERSONNEL**
+
+1.  Maritime Patrol Unit Personnel (2-4)
+2.  Land-Based Observation Post Personnel (2)
+3.  Command & Control (C2) Personnel (1)
+4.  Communications Specialist (1)
+5.  Security Personnel (As needed - Coordinate with on-site security lead)
+6.  Local Law Enforcement (As needed - Coordinate with local authorities)
+
+**B. EQUIPMENT**
+
+1.  Weapons (Maritime Patrol Unit)
+2.  Maritime Interdiction Equipment (Maritime Patrol Unit)
+3.  Night Vision Equipment (Land-Based Observation Post)
+4.  High-Powered Optics (Land-Based Observation Post)
+5.  Communications Equipment (All Units)
+6.  Loudspeaker
+7.  VHF Radio
+8.  Searchlight
+9.  Radar Surveillance System
+10. Thermal Imaging Surveillance System
+11. Evidence Collection Supplies
+12. Boat boarding and inspection equipment
+
+**C. VEHICLES**
+
+1.  Maritime Patrol Unit Vessel
+2.  Land Vehicle (Observation Post Access)
+
+**D. OTHER RESOURCES**
+
+1.  Ammunition
+2.  Authorization for Warning Shots/Disabling Fire (Confirm authorization before use)
+3.  Communication Channels (Ensure clear and secure channels)
+4.  Restricted Zone Perimeter Markers (Verify correct placement)
+5.  Reporting Forms/Templates (Access digital and hard copies)
+6.  Rules of Engagement Documentation (All personnel to review prior to engagement)
+7.  Debriefing Facilitator
+
+### V. COMMUNICATION PLAN
+
+*   **Primary Channels:** Secure radio frequencies.
+*   **Secondary Channels:** Satellite phones, mobile phones.
+*   **Communication Protocol:** Clear, concise messaging. Use standardized terminology.
+
+### VI. COMMAND & CONTROL
+
+*   **Incident Commander:** (Designate individual) Responsible for overall coordination.
+*   **Chain of Command:** Clearly defined hierarchy.
+
+### VII. SAFETY PROTOCOLS
+
+*   Prioritize safety of personnel and assets.
+*   Adhere to all applicable laws, regulations, and rules of engagement.
+*   Establish a safety zone around the incident.
+
+### VIII. CONTINGENCY PLANS
+
+*   **Medical Emergency:** Establish procedures for medical evacuation and treatment.
+*   **Escalation of Threat:** Implement higher levels of force if necessary.
+*   **Communication Failure:** Utilize alternate communication channels.
+
+### IX. DOCUMENTATION
+
+*   Maintain a detailed log of all actions taken.
+*   Preserve all evidence.
+*   Prepare a comprehensive incident report.
+
+**NOTE:** This is a guideline. Adapt to the specific circumstances.
