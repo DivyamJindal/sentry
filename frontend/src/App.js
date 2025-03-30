@@ -3,6 +3,7 @@ import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
 import LandingPage from './components/LandingPage';
+import DronePage from './components/DronePage';
 
 const theme = createTheme({
   palette: {
@@ -63,6 +64,7 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/drone/:id" element={<DronePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
