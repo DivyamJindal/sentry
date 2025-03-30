@@ -1,2 +1,7 @@
 venv/
+<<<<<<< HEAD
 .envcamera/yolov8x.pt
+=======
+.env
+camera/yolov8x.pt
+>>>>>>> 32779ba (adding gitignore and gitattributes)
