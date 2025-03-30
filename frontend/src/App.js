@@ -1,9 +1,17 @@
 import React from 'react';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { withAuthenticationRequired } from '@auth0/auth0-react';
 import Dashboard from './components/Dashboard';
 import LandingPage from './components/LandingPage';
 import DronePage from './components/DronePage';
+
+// Optionally, create a loading component for redirection
+const Loading = () => <div>Loading...</div>;
+
+const ProtectedDashboard = withAuthenticationRequired(Dashboard, {
+  onRedirecting: () => <Loading />
+});
 
 const theme = createTheme({
   palette: {
@@ -63,7 +71,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard" element={<ProtectedDashboard />} />
           <Route path="/drone/:id" element={<DronePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
