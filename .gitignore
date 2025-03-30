@@ -1,3 +1,17 @@
+<<<<<<< HEAD
 .env
 camera/yolov8x.pt
 venv
+=======
+venv/
+<<<<<<< HEAD
+<<<<<<< HEAD
+.env
+camera/yolov8x.pt
+=======
+.envcamera/yolov8x.pt
+>>>>>>> refs/remotes/origin/main
+=======
+.envcamera/yolov8x.pt
+>>>>>>> origin/main
+>>>>>>> 85a4f98 (adding back all files)
